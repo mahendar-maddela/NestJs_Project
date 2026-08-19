@@ -1,4 +1,4 @@
-# Nexin Enterprise Backend — Setup & Run Guide
+#Enterprise Backend — Setup & Run Guide
 
 New to this project? This is everything you need to install it and get all services running
 locally, either with Docker (recommended) or natively. For architecture/design background, see
@@ -155,7 +155,7 @@ All three use `--watch`, so they auto-restart on file changes.
 You'll know `apps/api` started correctly when you see:
 
 ```
-🚀 NEXIN ENTERPRISE BACKEND SERVER STARTED SUCCESSFULLY
+🚀  ENTERPRISE BACKEND SERVER STARTED SUCCESSFULLY
 🌐 REST API Server URL : http://localhost:8080
 📚 Swagger Docs URL   : http://localhost:8080/docs
 🗄️  Database Status     : CONNECTED (MySQL)
@@ -204,8 +204,8 @@ container-orchestrated, PM2 as the fallback for a plain VM with no container run
 
 ```bash
 # One image, all 3 apps baked in — see Dockerfile's multi-stage comment for why
-docker build -t nexin-backend:<git-sha-or-version> .
-docker push <your-registry>/nexin-backend:<git-sha-or-version>
+docker build -t -backend:<git-sha-or-version> .
+docker push <your-registry>/-backend:<git-sha-or-version>
 ```
 
 Tag by git SHA or release version, not `latest` — you want to know exactly which commit is
@@ -261,9 +261,9 @@ whatever job-level logging/alerting you have for silently-stopped cron runs.
 
 ```bash
 npm run build:all
-pm2 start dist/apps/api/apps/api/src/main.js --name nexin-api
-pm2 start dist/apps/ocpp-gateway/apps/ocpp-gateway/src/main.js --name nexin-ocpp-gateway
-pm2 start dist/apps/scheduler/apps/scheduler/src/main.js --name nexin-scheduler -i 1
+pm2 start dist/apps/api/apps/api/src/main.js --name -api
+pm2 start dist/apps/ocpp-gateway/apps/ocpp-gateway/src/main.js --name -ocpp-gateway
+pm2 start dist/apps/scheduler/apps/scheduler/src/main.js --name -scheduler -i 1
 pm2 save
 ```
 
