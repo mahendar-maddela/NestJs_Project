@@ -1,0 +1,139 @@
+name: nexin-backend
+
+# Runs the three real processes in this monorepo (apps/api, apps/ocpp-gateway,
+# apps/scheduler — apps/workers no longer exists in this codebase) plus Redis.
+#
+# All three app services build from the SAME image (see Dockerfile) and differ only
+# by `command:` — one build, one artifact to version, independent scaling still works
+# because Compose (and later Kubernetes/ECS) scale per *service*, not per image.
+#
+# Database: this project intentionally does NOT auto-create schema (`synchronize:
+# false` — see database/src/data-source.ts and CLAUDE.md's "no destructive schema
+# commands" rule), and it shares its database with the legacy Express app during the
+# migration. So MySQL is NOT containerized by default — the app containers connect
+# out to whatever DATABASE_URL in your .env already points at. On Docker Desktop
+# (Windows/Mac), if that's a MySQL install running on your host machine, change
+# `localhost` to `host.docker.internal` in DATABASE_URL first (containers can't reach
+# the host via `localhost` — that's the exact host/container mismatch this Compose
+# setup exists to eliminate). See README.md's Docker section for the one-line fix and
+# the optional bundled `mysql` service for teammates with no local MySQL at all.
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    init: true
+    # No host port published on purpose: the app containers reach this over the
+    # Docker network as `redis:6379` regardless, and publishing 6379 collides with
+    # any Redis you already run natively on the host (e.g. for `npm run start:dev`
+    # outside Docker). Add a `ports:` mapping back here only if something outside
+    # this compose project genuinely needs to reach it — on a different host port.
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["node", "dist/apps/api/apps/api/src/main.js"]
+    restart: unless-stopped
+    init: true
+    env_file:
+      - .env
+    environment:
+      # Container-to-container hostnames — override whatever .env has for local/bare-metal use.
+      REDIS_HOST: redis
+      OCPP_GATEWAY_INTERNAL_URL: http://ocpp-gateway:${OCPP_PORT:-8000}
+      DATABASE_URL: mysql://root:@host.docker.internal:3306/slns_db
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-8080}/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    # Uncomment if FIREBASE_SERVICE_ACCOUNT_PATH is set — the file is gitignored and
+    # must never be baked into the image, so it's mounted read-only at runtime instead.
+    # volumes:
+    #   - ./firebase-service-account.json:/app/firebase-service-account.json:ro
+
+  ocpp-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["node", "dist/apps/ocpp-gateway/apps/ocpp-gateway/src/main.js"]
+    restart: unless-stopped
+    init: true
+    env_file:
+      - .env
+    environment:
+      REDIS_HOST: redis
+      DATABASE_URL: mysql://root:@host.docker.internal:3306/slns_db
+    ports:
+      - "${OCPP_PORT:-8000}:${OCPP_PORT:-8000}"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # No HTTP route to probe (this process holds WebSocket upgrades, not a REST API) —
+      # a bare TCP connect is enough to confirm the process is up and accepting sockets.
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/${OCPP_PORT:-8000}' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["node", "dist/apps/scheduler/apps/scheduler/src/main.js"]
+    restart: unless-stopped
+    init: true
+    env_file:
+      - .env
+    environment:
+      REDIS_HOST: redis
+      DATABASE_URL: mysql://root:@host.docker.internal:3306/slns_db
+    depends_on:
+      redis:
+        condition: service_healthy
+    # No HTTP/TCP surface at all (ScheduleModule cron jobs only) — nothing to probe,
+    # so no HEALTHCHECK here. `restart: unless-stopped` still recovers a crashed process.
+
+  # Optional — only for teammates with no local MySQL install at all. Disabled by
+  # default; start it explicitly with `docker compose --profile with-db up`.
+  # A fresh container has an EMPTY database (no tables — this project has no
+  # from-scratch schema migration yet, see README.md §5). After first start, import a
+  # dump with:
+  #   docker compose exec -T mysql mysql -uroot slns_db < path/to/dump.sql
+  # Then point DATABASE_URL in .env at mysql://root:@mysql:3306/slns_db.
+  mysql:
+    image: mysql:8.0
+    profiles: ["with-db"]
+    restart: unless-stopped
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_DATABASE: slns_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  redis-data:
+  mysql-data:

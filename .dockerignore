@@ -1,0 +1,31 @@
+node_modules
+dist
+tests
+docs
+tools
+uploads
+*.log
+npm-debug.log*
+
+# Secrets — never let these into the build context
+.env
+.env.local
+.env.*.local
+*.pem
+firebase-service-account.json
+
+# VCS / editor / OS cruft
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Not needed inside the image
+README.md
+CLAUDE.md
+docker-compose.yml
+docker-compose.*.yml
+Dockerfile
+.dockerignore

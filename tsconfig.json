@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2021",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "incremental": true,
+    "skipLibCheck": true,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "strictBindCallApply": true,
+    "forceConsistentCasingInFileNames": false,
+    "noFallthroughCasesInSwitch": false,
+    "ignoreDeprecations": "5.0",
+    "paths": {
+      "@app/database": ["./database/src", "./database", "./config/database"],
+      "@app/redis": ["./libs/redis/src", "./libs/redis", "./config/redis"],
+      "@app/tenancy": ["./libs/tenancy/src", "./libs/tenancy"],
+      "@app/common": ["./libs/common/src", "./libs/common"],
+      "@app/config": ["./libs/config/src", "./libs/config"],
+      "@app/telemetry": ["./libs/telemetry/src", "./libs/telemetry"],
+      "@app/logger": ["./libs/logger/src", "./libs/logger"],
+      "@app/events": ["./libs/events/src", "./libs/events"],
+      "@app/queue": ["./libs/queue/src", "./libs/queue"],
+      "@app/cache": ["./libs/cache/src", "./libs/cache"],
+      "@app/security": ["./libs/security/src", "./libs/security"],
+      "@app/*": ["./libs/*/src", "./libs/*"],
+      "@modules/*": ["./modules/*/src", "./modules/*"],
+      "@integrations/*": ["./integrations/*/src", "./integrations/*"]
+    }
+  }
+}
